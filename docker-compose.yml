@@ -1,0 +1,46 @@
+version: '3'
+networks:
+  basic-network:
+    driver: bridge
+
+services:
+  consul:
+    image: bitnami/consul:latest 
+    networks:
+      - basic-network
+    restart: always
+    ports:
+      - '8300:8300'
+      - '8301:8301'
+      - '8301:8301/udp'
+      - '8500:8500'
+      - '8600:8600'
+      - '8600:8600/udp'
+    expose:
+      - 8500
+    volumes:
+      - ./consul-data:/bitnami
+  api-gateway:
+    image: api-gateway 
+    networks:
+      - basic-network
+    ports:
+      - '5200:5200'
+    volumes:
+      - ./appsettings.json:/appsettings.json
+  user-api:
+    image: user-api 
+    networks:
+      - basic-network
+    ports:
+      - '5203:5203'
+    volumes:
+      - ./appsettings.json:/appsettings.json
+  product-api:
+    image: product-api 
+    networks:
+      - basic-network
+    ports:
+      - '5202:5202'
+    volumes:
+      - ./appsettings.json:/appsettings.json

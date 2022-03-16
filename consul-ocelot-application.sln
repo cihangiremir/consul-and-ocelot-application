@@ -7,7 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{30058602-949
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{BB1399F3-DA10-4C15-8B8F-926BFE092351}"
 	ProjectSection(SolutionItems) = preProject
+		ApiGatewayDockerfile = ApiGatewayDockerfile
 		docker-compose.yml = docker-compose.yml
+		ProductApiDockerfile = ProductApiDockerfile
+		UserApiDockerfile = UserApiDockerfile
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ocelot-gateway", "ocelot-gateway", "{A8847BC2-E9B7-4F3C-B077-A065134419C3}"
