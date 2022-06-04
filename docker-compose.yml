@@ -20,6 +20,7 @@ services:
       - 8500
     volumes:
       - ./consul-data:/bitnami
+
   api-gateway:
     image: api-gateway 
     networks:
@@ -28,6 +29,11 @@ services:
       - '5200:5200'
     volumes:
       - ./appsettings.json:/appsettings.json
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      CONSUL_ENDPOINT: "http://consul:8500"
+      APPLICATION_URL: "http://gateway:5202"
+
   user-api:
     image: user-api 
     networks:
@@ -36,6 +42,11 @@ services:
       - '5203:5203'
     volumes:
       - ./appsettings.json:/appsettings.json
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      CONSUL_ENDPOINT: "http://consul:8500"
+      APPLICATION_URL: "http://gateway:5202"
+
   product-api:
     image: product-api 
     networks:
@@ -44,3 +55,7 @@ services:
       - '5202:5202'
     volumes:
       - ./appsettings.json:/appsettings.json
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      CONSUL_ENDPOINT: "http://consul:8500"
+      APPLICATION_URL: "http://gateway:5202"

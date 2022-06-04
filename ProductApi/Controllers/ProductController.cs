@@ -21,12 +21,12 @@ namespace ProductApi.Controllers
             _logger = logger;
         }
 
-        [HttpGet(Name = "GetProducts")]
+        [HttpGet]
         public IEnumerable<Product> Get()
         {
             return _products;
         }
-        [HttpPost(Name = "AddProduct")]
+        [HttpPost]
         public IActionResult Add([FromBody] Product product)
         {
             _products.Add(product);

@@ -15,7 +15,7 @@
       "launchUrl": "health",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "CONSUL_ENDPOINT": "localhost:8500",
+        "CONSUL_ENDPOINT": "http://localhost:8500",
         "APPLICATION_URL": "http://localhost:5200"
       },
       "applicationUrl": "http://localhost:5200",
@@ -27,7 +27,7 @@
       "launchUrl": "health",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "CONSUL_ENDPOINT": "localhost:8500",
+        "CONSUL_ENDPOINT": "http://localhost:8500",
         "APPLICATION_URL": "http://localhost:5200"
       }
     },

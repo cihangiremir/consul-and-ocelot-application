@@ -1,0 +1,1 @@
+docker build -f ProductApiDockerfile -t cihangiremir/product-api . --no-cache

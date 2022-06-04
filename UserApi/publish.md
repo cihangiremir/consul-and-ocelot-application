@@ -1,0 +1,1 @@
+docker build -f UserApiDockerfile -t cihangiremir/user-api . --no-cache

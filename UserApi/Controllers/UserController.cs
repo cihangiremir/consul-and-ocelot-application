@@ -20,12 +20,12 @@ namespace UserApi.Controllers
             _logger = logger;
         }
 
-        [HttpGet(Name = "GetUsers")]
+        [HttpGet]
         public IEnumerable<User> Get()
         {
             return _users;
         }
-        [HttpPost(Name = "AddUser")]
+        [HttpPost]
         public IActionResult AddUser([FromBody] User user)
         {
             _users.Add(user);
