@@ -15,7 +15,10 @@ namespace Core.Extensions
             services.AddSingleton<IConsulClient, ConsulClient>(p => new ConsulClient(consulConfig =>
             {
                 var address = configuration.GetSection("Consul:Host").Value;
+                var waitTime = Convert.ToInt32(configuration.GetSection("Consul:WaitTime").Value);
                 consulConfig.Address = new Uri(address);
+                consulConfig.WaitTime = TimeSpan.FromSeconds(Convert.ToDouble(waitTime == 0 ? 5 : waitTime));
+                consulConfig.Token = configuration.GetSection("Consul:Token").Value;
             }));
             return services;
         }
@@ -86,12 +89,10 @@ namespace Core.Extensions
                 options.ReloadOnChange = true;
                 options.OnLoadException = exceptionContext =>
                 {
-                    Log.Error("Consul OnLoadException -> Exception:{@ex}", exceptionContext.Exception);
                     exceptionContext.Ignore = true;
                 };
                 options.OnWatchException = exceptionContext =>
                 {
-                    Log.Error("Consul OnWatchException -> Exception:{@ex}", exceptionContext.Exception);
                     return TimeSpan.FromSeconds(2);
                 };
             };

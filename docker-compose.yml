@@ -16,8 +16,6 @@ services:
       - '8500:8500'
       - '8600:8600'
       - '8600:8600/udp'
-    expose:
-      - 8500
     volumes:
       - ./consul-data:/bitnami
 
@@ -32,7 +30,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       CONSUL_ENDPOINT: "http://consul:8500"
-      APPLICATION_URL: "http://gateway:5202"
+      APPLICATION_URL: "http://api-gateway:5202"
 
   user-api:
     image: user-api 
@@ -45,7 +43,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       CONSUL_ENDPOINT: "http://consul:8500"
-      APPLICATION_URL: "http://gateway:5202"
+      APPLICATION_URL: "http://user-api:5203"
 
   product-api:
     image: product-api 
@@ -58,4 +56,4 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       CONSUL_ENDPOINT: "http://consul:8500"
-      APPLICATION_URL: "http://gateway:5202"
+      APPLICATION_URL: "http://product-api:5202"
