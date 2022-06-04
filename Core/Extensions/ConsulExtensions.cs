@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Winton.Extensions.Configuration.Consul;
 
 namespace Core.Extensions
 {
@@ -68,6 +69,32 @@ namespace Core.Extensions
             });
 
             return app;
+        }
+        public static Action<IConsulConfigurationSource> ConsulConfigurationSourceAction()
+        {
+            var consulEndpoint = Environment.GetEnvironmentVariable("CONSUL_ENDPOINT");
+            if (string.IsNullOrEmpty(consulEndpoint))
+                throw new Exception("Consul endpoint must not empty");
+            return (options) =>
+            {
+                options.ConsulConfigurationOptions = consulConfOptions =>
+                {
+                    consulConfOptions.Address = new Uri(consulEndpoint);
+                };
+                options.Optional = true;
+                options.PollWaitTime = TimeSpan.FromSeconds(5);
+                options.ReloadOnChange = true;
+                options.OnLoadException = exceptionContext =>
+                {
+                    Log.Error("Consul OnLoadException -> Exception:{@ex}", exceptionContext.Exception);
+                    exceptionContext.Ignore = true;
+                };
+                options.OnWatchException = exceptionContext =>
+                {
+                    Log.Error("Consul OnWatchException -> Exception:{@ex}", exceptionContext.Exception);
+                    return TimeSpan.FromSeconds(2);
+                };
+            };
         }
     }
 }

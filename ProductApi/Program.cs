@@ -1,3 +1,4 @@
+using Core.Extensions;
 using ProductApi;
 using Serilog;
 using Serilog.Debugging;
@@ -10,37 +11,18 @@ public class Program
         try
         {
             SelfLog.Enable(Console.Error);
+            var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
 
             var configurationBuilder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddConsul($"ProductApi/appsettings{(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT").Contains("Development") ? ".Development" : "")}.json", options =>
-            {
-                options.ConsulConfigurationOptions = consulConfOptions =>
-                {
-                    consulConfOptions.Address = new Uri(Environment.GetEnvironmentVariable("CONSUL_ENDPOINT"));
-                };
-                options.Optional = true;
-                options.PollWaitTime = TimeSpan.FromSeconds(5);
-                options.ReloadOnChange = true;
-                options.OnLoadException = exceptionContext =>
-                {
-                    Log.Error("Consul OnLoadException -> Exception:{@ex}", exceptionContext.Exception);
-                    exceptionContext.Ignore = true;
-                };
-                options.OnWatchException = exceptionContext =>
-                {
-                    Log.Error("Consul OnWatchException -> Exception:{@ex}", exceptionContext.Exception);
-                    return TimeSpan.FromSeconds(2);
-                };
-            });
+            .AddConsul($"ProductApi/appsettings.{aspNetCoreEnvironment}.json", ConsulExtensions.ConsulConfigurationSourceAction());
 
             Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configurationBuilder.Build())
                 .Destructure.ToMaximumDepth(5).CreateLogger();
 
-            Log.Debug($"Logger created.");
             Log.Information("Starting app");
 
-            CreateWebHostBuilder(args).Build().Run();
+            CreateHostBuilder(args, aspNetCoreEnvironment).Build().Run();
         }
         catch (Exception ex)
         {
@@ -51,13 +33,9 @@ public class Program
             Log.CloseAndFlush();
         }
     }
-    public static IWebHostBuilder CreateWebHostBuilder(string[] args)
+    public static IHostBuilder CreateHostBuilder(string[] args, string aspNetCoreEnvironment)
     {
-        return new WebHostBuilder()
-            .UseKestrel(options =>
-            {
-                options.AllowSynchronousIO = true;
-            })
+        return Host.CreateDefaultBuilder(args)
             .UseSerilog()
             .UseContentRoot(Directory.GetCurrentDirectory())
             .ConfigureAppConfiguration((hostingContext, config) =>
@@ -66,28 +44,13 @@ public class Program
                       .AddEnvironmentVariables();
                 if (args is not null) config.AddCommandLine(args);
 
-                config.AddConsul($"ProductApi/appsettings{(hostingContext.HostingEnvironment.IsDevelopment() ? ".Development" : "")}.json", options =>
-                     {
-                         options.ConsulConfigurationOptions = consulConfOptions =>
-                         {
-                             consulConfOptions.Address = new Uri(Environment.GetEnvironmentVariable("CONSUL_ENDPOINT"));
-                         };
-                         options.Optional = true;
-                         options.PollWaitTime = TimeSpan.FromSeconds(5);
-                         options.ReloadOnChange = true;
-                         options.OnLoadException = exceptionContext =>
-                         {
-                             Log.Error("Consul OnLoadException -> Exception:{@ex}", exceptionContext.Exception);
-                             exceptionContext.Ignore = true;
-                         };
-                         options.OnWatchException = exceptionContext =>
-                         {
-                             Log.Error("Consul OnWatchException -> Exception:{@ex}", exceptionContext.Exception);
-                             return TimeSpan.FromSeconds(2);
-                         };
-                     });
+                config.AddConsul($"ProductApi/appsettings.{aspNetCoreEnvironment}.json", ConsulExtensions.ConsulConfigurationSourceAction());
             })
-            .UseIISIntegration()
-            .UseStartup<Startup>();
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseIISIntegration()
+                .UseKestrel()
+                .UseStartup<Startup>();
+            });
     }
 }
