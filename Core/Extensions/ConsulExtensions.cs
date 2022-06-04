@@ -46,10 +46,11 @@ namespace Core.Extensions
                 Address = $"{address.Host}",
                 Port = address.Port,
             };
-            if (!registration.Address.Contains("localhost"))
-            {
-                registration.Checks = new AgentCheckRegistration[]
-                {
+            if (registration.Address.Contains("localhost")) 
+                return app;
+
+            registration.Checks = new AgentCheckRegistration[]
+{
                     new AgentCheckRegistration
                     {
                         HTTP = new Uri(address,"health").OriginalString,
@@ -59,16 +60,15 @@ namespace Core.Extensions
                         TLSSkipVerify=true,
                         Method="GET"
                     }
-                };
-            }
+};
             logger?.LogInformation("UseConsulRegister -> Registering to Consul -> Id:{@Id}", registration.ID);
-            consulClient.Agent.ServiceDeregister(registration.ID).ConfigureAwait(false);
-            consulClient.Agent.ServiceRegister(registration).ConfigureAwait(false);
+            consulClient.Agent.ServiceDeregister(registration.ID).GetAwaiter().GetResult();
+            consulClient.Agent.ServiceRegister(registration).GetAwaiter().GetResult();
 
-            lifetime.ApplicationStopping.Register(() =>
+            lifetime.ApplicationStopping.Register(async () =>
             {
                 logger?.LogInformation("UseConsulRegister -> Unregistering from Consul -> Id:{@Id}", registration.ID);
-                consulClient.Agent.ServiceDeregister(registration.ID).GetAwaiter().GetResult();
+                await consulClient.Agent.ServiceDeregister(registration.ID).ConfigureAwait(false);
             });
 
             return app;
