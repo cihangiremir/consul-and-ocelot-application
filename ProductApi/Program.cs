@@ -1,4 +1,4 @@
-using Core.Extensions;
+using Infrastructure.Extensions;
 using ProductApi;
 using Serilog;
 using Serilog.Debugging;
@@ -15,14 +15,18 @@ public class Program
 
             var configurationBuilder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddConsul($"ProductApi/appsettings.{aspNetCoreEnvironment}.json", ConsulExtensions.ConsulConfigurationSourceAction());
+            .AddEnvironmentVariables()
+            .AddConsul($"ProductApi/appsettings.{aspNetCoreEnvironment}.json", ConsulExtensions.ConsulConfigurationSourceAction(TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(5)));
+
+
+            if (args is not null) configurationBuilder.AddCommandLine(args);
 
             Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configurationBuilder.Build())
                 .Destructure.ToMaximumDepth(5).CreateLogger();
 
-            Log.Information("Starting app");
+            Log.Information("Application starting...");
 
-            CreateHostBuilder(args, aspNetCoreEnvironment).Build().Run();
+            CreateHostBuilder(args, configurationBuilder).Build().Run();
         }
         catch (Exception ex)
         {
@@ -33,24 +37,18 @@ public class Program
             Log.CloseAndFlush();
         }
     }
-    public static IHostBuilder CreateHostBuilder(string[] args, string aspNetCoreEnvironment)
+    public static IHostBuilder CreateHostBuilder(string[] args, IConfigurationBuilder configurationBuilder)
     {
         return Host.CreateDefaultBuilder(args)
             .UseSerilog()
             .UseContentRoot(Directory.GetCurrentDirectory())
-            .ConfigureAppConfiguration((hostingContext, config) =>
+            .ConfigureAppConfiguration((config) =>
             {
-                config.SetBasePath(hostingContext.HostingEnvironment.ContentRootPath)
-                      .AddEnvironmentVariables();
-                if (args is not null) config.AddCommandLine(args);
-
-                config.AddConsul($"ProductApi/appsettings.{aspNetCoreEnvironment}.json", ConsulExtensions.ConsulConfigurationSourceAction());
+                config = configurationBuilder;
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.UseIISIntegration()
-                .UseKestrel()
-                .UseStartup<Startup>();
+                webBuilder.UseKestrel().UseStartup<Startup>();
             });
     }
 }

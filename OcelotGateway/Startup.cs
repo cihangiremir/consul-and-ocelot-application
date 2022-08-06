@@ -1,9 +1,9 @@
-﻿using Core.Extensions;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Ocelot.Provider.Consul;
 using System.Text.Json;
+using Infrastructure.Extensions;
 
 namespace ApiGateway
 {

@@ -13,15 +13,16 @@ public class Program
 
             var configurationBuilder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", true, true)
+            .AddEnvironmentVariables()
             .AddJsonFile($"appsettings.{aspNetCoreEnvironment}.json", true, true);
 
-            Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configurationBuilder.Build())
+            Log.Logger = new LoggerConfiguration().ReadFrom
+                .Configuration(configurationBuilder.Build())
                 .Destructure.ToMaximumDepth(5).CreateLogger();
 
-            Log.Information("Starting app");
+            Log.Information("Application starting...");
 
-            CreateHostBuilder(args, aspNetCoreEnvironment).Build().Run();
+            CreateHostBuilder(args,  configurationBuilder).Build().Run();
         }
         catch (Exception ex)
         {
@@ -32,23 +33,18 @@ public class Program
             Log.CloseAndFlush();
         }
     }
-    public static IHostBuilder CreateHostBuilder(string[] args, string aspNetCoreEnvironment)
+    public static IHostBuilder CreateHostBuilder(string[] args, IConfigurationBuilder configurationBuilder)
     {
         return Host.CreateDefaultBuilder(args)
             .UseSerilog()
             .UseContentRoot(Directory.GetCurrentDirectory())
-            .ConfigureAppConfiguration((hostingContext, config) =>
+            .ConfigureAppConfiguration((config) =>
             {
-                config.AddJsonFile("appsettings.json", true, true)
-                .AddJsonFile($"appsettings.{aspNetCoreEnvironment}.json", true, true)
-                .AddEnvironmentVariables();
-                if (args is not null) config.AddCommandLine(args);
+                config = configurationBuilder;
             })
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.UseIISIntegration()
-                .UseKestrel()
-                .UseStartup<Startup>();
+                webBuilder.UseKestrel().UseStartup<Startup>();
             });
     }
 }

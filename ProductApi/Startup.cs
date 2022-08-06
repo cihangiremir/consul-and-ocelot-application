@@ -1,4 +1,4 @@
-﻿using Core.Extensions;
+﻿using Infrastructure.Extensions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
 

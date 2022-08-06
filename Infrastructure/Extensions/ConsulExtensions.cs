@@ -6,19 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Winton.Extensions.Configuration.Consul;
 
-namespace Core.Extensions
+namespace Infrastructure.Extensions
 {
     public static class ConsulExtensions
     {
         public static IServiceCollection AddConsulService(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddSingleton<IConsulClient, ConsulClient>(p => new ConsulClient(consulConfig =>
+            var consulConfig = configuration.GetSection("Consul").Get<ConsulConfiguration>();
+            services.AddSingleton<IConsulClient, ConsulClient>(p => new ConsulClient(consulClientConfig =>
             {
-                var address = configuration.GetSection("Consul:Host").Value;
-                var waitTime = Convert.ToInt32(configuration.GetSection("Consul:WaitTime").Value);
-                consulConfig.Address = new Uri(address);
-                consulConfig.WaitTime = TimeSpan.FromSeconds(Convert.ToDouble(waitTime == 0 ? 5 : waitTime));
-                consulConfig.Token = configuration.GetSection("Consul:Token").Value;
+                consulClientConfig.Address = new Uri(consulConfig.Host);
+                consulClientConfig.WaitTime = TimeSpan.FromSeconds(Convert.ToDouble(consulConfig.WaitTime == 0 ? 5 : consulConfig.WaitTime));
+                consulClientConfig.Token = consulConfig.Token;
             }));
             return services;
         }
@@ -30,53 +29,60 @@ namespace Core.Extensions
             var logger = app.ApplicationServices.GetRequiredService<ILoggerFactory>()?.CreateLogger("ConsulExtensions");
             var lifetime = app.ApplicationServices.GetRequiredService<IApplicationLifetime>();
 
-            var appUrl = configuration.GetSection("APPLICATION_URL").Value;
-            logger?.LogInformation("UseConsulRegister -> ApplicationUrl:{@applicationUrl}", appUrl);
-            if (string.IsNullOrEmpty(appUrl))
+            var consulConfig = configuration.GetSection("Consul").Get<ConsulConfiguration>();
+
+            var appUrl = configuration.GetValue<string>("APPLICATION_URL");
+
+            if (string.IsNullOrWhiteSpace(appUrl))
             {
                 logger?.LogInformation("UseConsulRegister -> ApplicationUrl is empty.Unable to register with the consul.");
                 return app;
             }
+            logger?.LogInformation("UseConsulRegister -> ApplicationUrl:{@applicationUrl}", appUrl);
+
             var address = new Uri(appUrl);
+            if (address.Host.Contains("localhost"))
+            {
+                logger.LogInformation("Consul does not active because application is running on the localhost.");
+                return app;
+            }
+            var applicationName = configuration.GetValue<string>("ApplicationName");
 
             var registration = new AgentServiceRegistration()
             {
-                ID = $"{configuration.GetSection("ApplicationName").Value}-{address.Host}:{address.Port}",
-                Name = $"{configuration.GetSection("ApplicationName").Value}",
+                ID = $"{applicationName}-{address.Host}:{address.Port}",
+                Name = $"{applicationName}",
                 Address = $"{address.Host}",
                 Port = address.Port,
             };
-            if (registration.Address.Contains("localhost")) 
-                return app;
+            
+            registration.Checks = consulConfig.AgentCheckRegistrations
+                .Select(t => new Consul.AgentCheckRegistration()
+                {
+                    HTTP = new Uri(address, t.Endpoint).OriginalString,
+                    Notes = t.Notes,
+                    Timeout = TimeSpan.FromSeconds(t.Timeout),
+                    Interval = TimeSpan.FromSeconds(t.Interval),
+                    TLSSkipVerify = t.TLSSkipVerify,
+                    Method = t.HttpMethod
+                }).ToArray();
 
-            registration.Checks = new AgentCheckRegistration[]
-{
-                    new AgentCheckRegistration
-                    {
-                        HTTP = new Uri(address,"health").OriginalString,
-                        Notes = "Checks ReportService /health",
-                        Timeout = TimeSpan.FromSeconds(5) ,
-                        Interval = TimeSpan.FromSeconds(20),
-                        TLSSkipVerify=true,
-                        Method="GET"
-                    }
-};
             logger?.LogInformation("UseConsulRegister -> Registering to Consul -> Id:{@Id}", registration.ID);
             consulClient.Agent.ServiceDeregister(registration.ID).GetAwaiter().GetResult();
             consulClient.Agent.ServiceRegister(registration).GetAwaiter().GetResult();
 
-            lifetime.ApplicationStopping.Register(async () =>
+            lifetime.ApplicationStopping.Register(() =>
             {
                 logger?.LogInformation("UseConsulRegister -> Unregistering from Consul -> Id:{@Id}", registration.ID);
-                await consulClient.Agent.ServiceDeregister(registration.ID).ConfigureAwait(false);
+                consulClient.Agent.ServiceDeregister(registration.ID).GetAwaiter().GetResult();
             });
 
             return app;
         }
-        public static Action<IConsulConfigurationSource> ConsulConfigurationSourceAction()
+        public static Action<IConsulConfigurationSource> ConsulConfigurationSourceAction(TimeSpan poolWaitTime, TimeSpan onWatchExceptionTime)
         {
             var consulEndpoint = Environment.GetEnvironmentVariable("CONSUL_ENDPOINT");
-            if (string.IsNullOrEmpty(consulEndpoint))
+            if (string.IsNullOrWhiteSpace(consulEndpoint))
                 throw new Exception("Consul endpoint must not empty");
             return (options) =>
             {
@@ -85,7 +91,7 @@ namespace Core.Extensions
                     consulConfOptions.Address = new Uri(consulEndpoint);
                 };
                 options.Optional = true;
-                options.PollWaitTime = TimeSpan.FromSeconds(5);
+                options.PollWaitTime = poolWaitTime == default ? TimeSpan.FromSeconds(5) : poolWaitTime;
                 options.ReloadOnChange = true;
                 options.OnLoadException = exceptionContext =>
                 {
@@ -93,7 +99,7 @@ namespace Core.Extensions
                 };
                 options.OnWatchException = exceptionContext =>
                 {
-                    return TimeSpan.FromSeconds(2);
+                    return onWatchExceptionTime == default ? TimeSpan.FromSeconds(5) : onWatchExceptionTime;
                 };
             };
         }
